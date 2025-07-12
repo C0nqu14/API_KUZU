@@ -1,40 +1,55 @@
 from flask import Flask, jsonify
 from config import Config
-from extensions import db, cors, login_manager 
+from extensions import db, cors, login_manager
+import os 
 
 
 from blueprints.detentos import detentos_bp
 from blueprints.ocorrencias import ocorrencias_bp
 from blueprints.dashboard import dashboard_bp
-from blueprints.auth import auth_bp 
+from blueprints.auth import auth_bp
 
 def create_app():
+    """
+    Função de fábrica para criar e configurar a aplicação Flask.
+    """
     app = Flask(__name__)
     app.config.from_object(Config)
 
+  
     db.init_app(app)
     cors.init_app(app)
-    login_manager.init_app(app) 
+    login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
+
+    login_manager.session_protection = "strong"
+
 
     app.register_blueprint(detentos_bp)
     app.register_blueprint(ocorrencias_bp)
     app.register_blueprint(dashboard_bp)
-    app.register_blueprint(auth_bp) 
+    app.register_blueprint(auth_bp)
 
     @app.route('/')
     def hello_world():
+        """Rota de teste para verificar se a API está funcionando."""
         return jsonify(message="Bem-vindo à API Kuzú!")
 
     return app
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
+    """
+    Este bloco é executado apenas quando o script é rodado diretamente (ex: python app.py).
+    Não é executado quando o Gunicorn importa o módulo.
+    """
     with app.app_context():
+       
         db.create_all()
 
-        
-        from models import Detento, User 
+     
+        from models import User, Detento 
         if not User.query.filter_by(username='admin').first():
             print("Criando usuário administrador padrão...")
             admin_user = User(username='admin', role='admin')
@@ -43,6 +58,7 @@ if __name__ == '__main__':
             db.session.commit()
             print("Usuário 'admin' criado com sucesso.")
 
+    
         if not Detento.query.first():
             print("Adicionando dados de exemplo de detentos...")
             detento1 = Detento(nome='João Matador', idade=45, crimes_cometidos='Assassinato', sentenca='Prisão perpétua', status='Preso', periculosidade='Alta', historico_movimentacoes='01/01/2020: Preso', foto_url='https://example.com/joao.jpg')
@@ -51,5 +67,6 @@ if __name__ == '__main__':
             db.session.add_all([detento1, detento2, detento3])
             db.session.commit()
             print("Dados de exemplo de detentos adicionados.")
+
 
     app.run(debug=True)
